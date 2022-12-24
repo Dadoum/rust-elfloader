@@ -21,6 +21,7 @@ use bitflags::bitflags;
 use xmas_elf::dynamic::*;
 use xmas_elf::program::ProgramIter;
 
+pub use xmas_elf::ElfFile;
 pub use xmas_elf::header::Machine;
 pub use xmas_elf::program::{Flags, ProgramHeader, ProgramHeader64};
 pub use xmas_elf::sections::{Rel, Rela};
@@ -133,7 +134,7 @@ pub struct DynamicInfo {
 /// `relocate` is called for every entry in the RELA table.
 pub trait ElfLoader<LibraryT> {
     /// Allocates a virtual region specified by `load_headers`.
-    fn allocate(&mut self, load_headers: LoadableHeaders) -> Result<LibraryT, ElfLoaderErr>;
+    fn allocate(&mut self, load_headers: LoadableHeaders, elf_binary: &ElfBinary) -> Result<LibraryT, ElfLoaderErr>;
 
     /// Copies `region` into memory starting at `base`.
     /// The caller makes sure that there was an `allocate` call previously

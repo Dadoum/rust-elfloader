@@ -319,7 +319,7 @@ impl<'s> ElfBinary<'s> {
     pub fn load<LibraryT>(&self, loader: &mut dyn ElfLoader<LibraryT>) -> Result<LibraryT, ElfLoaderErr> {
         self.is_loadable()?;
 
-        let mut library = loader.allocate(self.iter_loadable_headers())?;
+        let mut library = loader.allocate(self.iter_loadable_headers(), self)?;
 
         // Load all headers
         for header in self.file.program_iter() {
