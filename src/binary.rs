@@ -8,7 +8,7 @@ use log::*;
 use xmas_elf::dynamic::Tag;
 use xmas_elf::program::ProgramHeader::{self, Ph32, Ph64};
 use xmas_elf::program::{ProgramIter, SegmentData, Type};
-use xmas_elf::sections::SectionData;
+use xmas_elf::sections::{SectionData, ShType};
 pub use xmas_elf::symbol_table::{Entry, Entry64};
 use xmas_elf::ElfFile;
 use xmas_elf::*;
@@ -161,23 +161,25 @@ impl<'s> ElfBinary<'s> {
     /// Process the relocation entries for the ELF file.
     ///
     /// Issues call to `loader.relocate` and passes the relocation entry.
-    fn maybe_relocate(&self, loader: &mut dyn ElfLoader) -> Result<(), ElfLoaderErr> {
+    fn maybe_relocate<LibraryT>(&self, loader: &mut dyn ElfLoader<LibraryT>, library: &mut LibraryT) -> Result<(), ElfLoaderErr> {
         // Relocation types are architecture specific
         let arch = self.get_arch();
 
-        // It's easier to just locate the section by name, either:
-        // - .rela.dyn
-        // - .rel.dyn
-        let relocation_section = self
+        let relocation_sections = self
             .file
-            .find_section_by_name(".rela.dyn")
-            .or_else(|| self.file.find_section_by_name(".rel.dyn"));
+            .section_iter()
+            .filter(|section| {
+                match section.get_type() {
+                    Ok(ShType::Rel) | Ok(ShType::Rela) => true,
+                    _ => false
+                }
+            });
 
         // Helper macro to call loader.relocate() on all entries
         macro_rules! iter_entries_and_relocate {
             ($rela_entries:expr, $create_addend:ident) => {
                 for entry in $rela_entries {
-                    loader.relocate(RelocationEntry {
+                    loader.relocate(library, RelocationEntry {
                         rtype: RelocationType::from(arch, entry.get_type() as u32)?,
                         offset: entry.get_offset() as u64,
                         index: entry.get_symbol_table_index(),
@@ -201,8 +203,7 @@ impl<'s> ElfBinary<'s> {
             };
         }
 
-        // If either section exists apply the relocations
-        relocation_section.map_or(Ok(()), |rela_section_dyn| {
+        for rela_section_dyn in relocation_sections {
             let data = rela_section_dyn.get_data(&self.file)?;
             match data {
                 SectionData::Rel32(rel_entries) => {
@@ -219,8 +220,8 @@ impl<'s> ElfBinary<'s> {
                 }
                 _ => return Err(ElfLoaderErr::UnsupportedSectionData),
             }
-            Ok(())
-        })
+        }
+        Ok(())
     }
 
     /// Processes a dynamic header section.
@@ -315,10 +316,10 @@ impl<'s> ElfBinary<'s> {
     ///
     /// Will tell loader to create space in the address space / region where the
     /// header is supposed to go, then copy it there, and finally relocate it.
-    pub fn load(&self, loader: &mut dyn ElfLoader) -> Result<(), ElfLoaderErr> {
+    pub fn load<LibraryT>(&self, loader: &mut dyn ElfLoader<LibraryT>) -> Result<LibraryT, ElfLoaderErr> {
         self.is_loadable()?;
 
-        loader.allocate(self.iter_loadable_headers())?;
+        let mut library = loader.allocate(self.iter_loadable_headers())?;
 
         // Load all headers
         for header in self.file.program_iter() {
@@ -333,31 +334,16 @@ impl<'s> ElfBinary<'s> {
             let typ = header.get_type()?;
             match typ {
                 Type::Load => {
-                    loader.load(header.flags(), header.virtual_addr(), raw)?;
-                }
-                Type::Tls => {
-                    loader.tls(
-                        header.virtual_addr(),
-                        header.file_size(),
-                        header.mem_size(),
-                        header.align(),
-                    )?;
+                    loader.load(&mut library, header.flags(), header.virtual_addr(), raw)?;
                 }
                 _ => {} // skip for now
             }
         }
 
         // Relocate headers
-        self.maybe_relocate(loader)?;
+        self.maybe_relocate(loader, &mut library)?;
 
-        // Process .data.rel.ro
-        for header in self.file.program_iter() {
-            if header.get_type()? == Type::GnuRelro {
-                loader.make_readonly(header.virtual_addr(), header.mem_size() as usize)?
-            }
-        }
-
-        Ok(())
+        Ok(library)
     }
 
     fn iter_loadable_headers(&self) -> LoadableHeaders {

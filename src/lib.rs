@@ -131,39 +131,18 @@ pub struct DynamicInfo {
 /// that need to be allocated (i.e., the LOAD program headers of the ELF binary),
 /// then `load` will be called to fill the allocated regions, and finally
 /// `relocate` is called for every entry in the RELA table.
-pub trait ElfLoader {
+pub trait ElfLoader<LibraryT> {
     /// Allocates a virtual region specified by `load_headers`.
-    fn allocate(&mut self, load_headers: LoadableHeaders) -> Result<(), ElfLoaderErr>;
+    fn allocate(&mut self, load_headers: LoadableHeaders) -> Result<LibraryT, ElfLoaderErr>;
 
     /// Copies `region` into memory starting at `base`.
     /// The caller makes sure that there was an `allocate` call previously
     /// to initialize the region.
-    fn load(&mut self, flags: Flags, base: VAddr, region: &[u8]) -> Result<(), ElfLoaderErr>;
+    fn load(&mut self, lib: &mut LibraryT, flags: Flags, base: VAddr, region: &[u8]) -> Result<(), ElfLoaderErr>;
 
     /// Request for the client to relocate the given `entry`
     /// within the loaded ELF file.
-    fn relocate(&mut self, entry: RelocationEntry) -> Result<(), ElfLoaderErr>;
-
-    /// Inform client about where the initial TLS data is located.
-    fn tls(
-        &mut self,
-        _tdata_start: VAddr,
-        _tdata_length: u64,
-        _total_size: u64,
-        _align: u64,
-    ) -> Result<(), ElfLoaderErr> {
-        Ok(())
-    }
-
-    /// In case there is a `.data.rel.ro` section we instruct the loader
-    /// to change the passed offset to read-only (this is called after
-    /// the relocate calls are completed).
-    ///
-    /// Note: The default implementation is a no-op since this is
-    /// not strictly necessary to implement.
-    fn make_readonly(&mut self, _base: VAddr, _size: usize) -> Result<(), ElfLoaderErr> {
-        Ok(())
-    }
+    fn relocate(&mut self, lib: &mut LibraryT, entry: RelocationEntry) -> Result<(), ElfLoaderErr>;
 }
 
 #[cfg(doctest)]
