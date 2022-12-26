@@ -161,7 +161,7 @@ impl<'s> ElfBinary<'s> {
     /// Process the relocation entries for the ELF file.
     ///
     /// Issues call to `loader.relocate` and passes the relocation entry.
-    fn maybe_relocate<LibraryT>(&self, loader: &mut dyn ElfLoader<LibraryT>, library: &mut LibraryT) -> Result<(), ElfLoaderErr> {
+    fn maybe_relocate<LibraryT>(&self, loader: &dyn ElfLoader<LibraryT>, library: &mut LibraryT) -> Result<(), ElfLoaderErr> {
         // Relocation types are architecture specific
         let arch = self.get_arch();
 
@@ -316,7 +316,7 @@ impl<'s> ElfBinary<'s> {
     ///
     /// Will tell loader to create space in the address space / region where the
     /// header is supposed to go, then copy it there, and finally relocate it.
-    pub fn load<LibraryT>(&self, loader: &mut dyn ElfLoader<LibraryT>) -> Result<LibraryT, ElfLoaderErr> {
+    pub fn load<LibraryT>(&self, loader: &dyn ElfLoader<LibraryT>) -> Result<LibraryT, ElfLoaderErr> {
         self.is_loadable()?;
 
         let mut library = loader.allocate(self.iter_loadable_headers(), self)?;
@@ -334,7 +334,7 @@ impl<'s> ElfBinary<'s> {
             let typ = header.get_type()?;
             match typ {
                 Type::Load => {
-                    loader.load(&mut library, header.flags(), header.virtual_addr(), raw)?;
+                    loader.load(&mut library, &header, raw)?;
                 }
                 _ => {} // skip for now
             }

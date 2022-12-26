@@ -134,16 +134,16 @@ pub struct DynamicInfo {
 /// `relocate` is called for every entry in the RELA table.
 pub trait ElfLoader<LibraryT> {
     /// Allocates a virtual region specified by `load_headers`.
-    fn allocate(&mut self, load_headers: LoadableHeaders, elf_binary: &ElfBinary) -> Result<LibraryT, ElfLoaderErr>;
+    fn allocate(&self, load_headers: LoadableHeaders, elf_binary: &ElfBinary) -> Result<LibraryT, ElfLoaderErr>;
 
     /// Copies `region` into memory starting at `base`.
     /// The caller makes sure that there was an `allocate` call previously
     /// to initialize the region.
-    fn load(&mut self, lib: &mut LibraryT, flags: Flags, base: VAddr, region: &[u8]) -> Result<(), ElfLoaderErr>;
+    fn load(&self, lib: &mut LibraryT, program_header: &ProgramHeader, region: &[u8]) -> Result<(), ElfLoaderErr>;
 
     /// Request for the client to relocate the given `entry`
     /// within the loaded ELF file.
-    fn relocate(&mut self, lib: &mut LibraryT, entry: RelocationEntry) -> Result<(), ElfLoaderErr>;
+    fn relocate(&self, lib: &mut LibraryT, entry: RelocationEntry) -> Result<(), ElfLoaderErr>;
 }
 
 #[cfg(doctest)]
