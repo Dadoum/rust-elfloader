@@ -1,13 +1,3 @@
-#![no_std]
-#![crate_name = "elfloader"]
-#![crate_type = "lib"]
-
-#[cfg(test)]
-#[macro_use]
-extern crate std;
-#[cfg(test)]
-extern crate env_logger;
-
 mod binary;
 pub use binary::ElfBinary;
 
@@ -84,6 +74,8 @@ impl fmt::Display for ElfLoaderErr {
         }
     }
 }
+
+impl std::error::Error for ElfLoaderErr {}
 
 bitflags! {
     #[derive(Default)]
