@@ -49,8 +49,8 @@ impl RelocationTypes {
         use RelocationTypes::*;
         match typ {
             0 => R_386_NONE,
-            1 => R_386_PC32,
-            2 => R_386_32,
+            1 => R_386_32,
+            2 => R_386_PC32,
             3 => R_386_GOT32,
             4 => R_386_PLT32,
             5 => R_386_COPY,
