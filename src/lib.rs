@@ -6,6 +6,7 @@ pub use arch::RelocationType;
 
 use core::fmt;
 use core::iter::Filter;
+use std::collections::HashMap;
 
 use bitflags::bitflags;
 use xmas_elf::dynamic::*;
@@ -126,7 +127,7 @@ pub struct DynamicInfo {
 /// `relocate` is called for every entry in the RELA table.
 pub trait ElfLoader<LibraryT> {
     /// Allocates a virtual region specified by `load_headers`.
-    fn allocate(load_headers: LoadableHeaders, elf_binary: &ElfBinary) -> Result<LibraryT, ElfLoaderErr>;
+    fn allocate(load_headers: LoadableHeaders, elf_binary: &ElfBinary, hooks: HashMap<String, usize>) -> Result<LibraryT, ElfLoaderErr>;
 
     /// Copies `region` into memory starting at `base`.
     /// The caller makes sure that there was an `allocate` call previously
