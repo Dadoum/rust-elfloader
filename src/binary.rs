@@ -3,6 +3,7 @@ use crate::{
     RelocationType,
 };
 use core::fmt;
+use std::collections::HashMap;
 #[cfg(log)]
 use log::*;
 use xmas_elf::dynamic::Tag;
@@ -316,10 +317,10 @@ impl<'s> ElfBinary<'s> {
     ///
     /// Will tell loader to create space in the address space / region where the
     /// header is supposed to go, then copy it there, and finally relocate it.
-    pub fn load<LoaderT: ElfLoader<LibraryT>, LibraryT>(&self) -> Result<LibraryT, ElfLoaderErr> {
+    pub fn load<LoaderT: ElfLoader<LibraryT>, LibraryT>(&self, hooks: HashMap<String, usize>) -> Result<LibraryT, ElfLoaderErr> {
         self.is_loadable()?;
 
-        let mut library = LoaderT::allocate(self.iter_loadable_headers(), self)?;
+        let mut library = LoaderT::allocate(self.iter_loadable_headers(), self, hooks)?;
 
         // Load all headers
         for header in self.file.program_iter() {
