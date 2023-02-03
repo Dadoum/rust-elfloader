@@ -179,14 +179,12 @@ impl<'s> ElfBinary<'s> {
         // Helper macro to call loader.relocate() on all entries
         macro_rules! iter_entries_and_relocate {
             ($rela_entries:expr, $create_addend:ident) => {
-                for entry in $rela_entries {
-                    LoaderT::relocate(library, RelocationEntry {
-                        rtype: RelocationType::from(arch, entry.get_type() as u32)?,
+                LoaderT::relocate(library, $rela_entries.iter().map(|entry| { RelocationEntry {
+                        rtype: RelocationType::from(arch, entry.get_type() as u32).unwrap(),
                         offset: entry.get_offset() as u64,
                         index: entry.get_symbol_table_index(),
                         addend: $create_addend!(entry),
-                    })?;
-                }
+                } }).collect())?;
             };
         }
 
@@ -317,10 +315,10 @@ impl<'s> ElfBinary<'s> {
     ///
     /// Will tell loader to create space in the address space / region where the
     /// header is supposed to go, then copy it there, and finally relocate it.
-    pub fn load<LoaderT: ElfLoader<LibraryT>, LibraryT>(&self, hooks: HashMap<String, usize>) -> Result<LibraryT, ElfLoaderErr> {
+    pub fn load<LoaderT: ElfLoader<LibraryT>, LibraryT>(&self) -> Result<LibraryT, ElfLoaderErr> {
         self.is_loadable()?;
 
-        let mut library = LoaderT::allocate(self.iter_loadable_headers(), self, hooks)?;
+        let mut library = LoaderT::allocate(self.iter_loadable_headers(), self)?;
 
         // Load all headers
         for header in self.file.program_iter() {
